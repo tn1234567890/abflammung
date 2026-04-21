@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#1a3a5c">
+<title>Brenner-Einstellungsrechner</title>
+<style>
+:root{--pri:#1a3a5c;--acc:#2980b9;--ok:#27ae60;--warn:#e67e22;--bad:#c0392b;--bg:#f0f4f8;--card:#fff;--txt:#2c3e50;--mut:#8495a7;--brd:#dce4ec;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',Inter,system-ui,sans-serif;background:var(--bg);color:var(--txt);min-height:100dvh;display:flex;flex-direction:column;}
+.topbar{background:var(--pri);color:#fff;padding:14px 16px 10px;position:sticky;top:0;z-index:50;}
+.topbar-title{font-size:1.05rem;font-weight:700;text-align:center;margin-bottom:12px;letter-spacing:.3px;}
+.pbar{display:flex;align-items:center;gap:0;padding:0 4px;}
+.sdot{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;flex-shrink:0;cursor:pointer;transition:all .3s;border:2px solid rgba(255,255,255,.25);background:transparent;color:rgba(255,255,255,.35);position:relative;z-index:2;}
+.sdot.done{background:var(--ok);border-color:var(--ok);color:#fff;}
+.sdot.active{background:var(--acc);border-color:var(--acc);color:#fff;transform:scale(1.15);}
+.sline{flex:1;height:3px;background:rgba(255,255,255,.2);z-index:1;transition:background .3s;}
+.sline.done{background:var(--ok);}
+.slabels{display:flex;justify-content:space-between;margin-top:6px;}
+.slbl{font-size:.62rem;color:rgba(255,255,255,.4);text-align:center;flex:1;transition:color .3s;}
+.slbl.active,.slbl.done{color:rgba(255,255,255,.85);}
+.ppct{text-align:center;font-size:.7rem;color:rgba(255,255,255,.55);margin-top:4px;}
+
+.content{flex:1;padding:14px 16px;overflow-y:auto;padding-bottom:85px;}
+.sv{display:none;animation:fi .25s ease;}.sv.active{display:block;}
+@keyframes fi{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:translateY(0);}}
+
+.card{background:var(--card);border-radius:12px;padding:16px;margin-bottom:14px;box-shadow:0 1px 6px rgba(0,0,0,.06);}
+.ct{font-size:.95rem;font-weight:700;color:var(--pri);margin-bottom:10px;}
+.cs{font-size:.78rem;color:var(--mut);margin-bottom:10px;}
+
+.g1{display:grid;grid-template-columns:1fr;gap:10px;}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.fld{display:flex;flex-direction:column;gap:3px;}
+.fld label{font-size:.75rem;color:var(--mut);font-weight:600;text-transform:uppercase;letter-spacing:.3px;}
+.fld input,.fld select{padding:11px 12px;border:2px solid var(--brd);border-radius:8px;font-size:1rem;background:#fff;width:100%;transition:border-color .2s;}
+.fld input:focus,.fld select:focus{outline:none;border-color:var(--acc);}
+.fld input:disabled{background:#f1f3f5;opacity:.55;}
+
+.btn{padding:12px 20px;border:none;border-radius:10px;font-size:.95rem;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:opacity .15s;width:100%;}
+.btn:active{opacity:.8;}
+.btn-pri{background:var(--acc);color:#fff;}
+.btn-ok{background:var(--ok);color:#fff;}
+.btn-bad{background:var(--bad);color:#fff;}
+.btn-ghost{background:transparent;color:var(--mut);border:1px solid var(--brd);}
+.btn-sm{padding:8px 14px;font-size:.82rem;width:auto;}
+
+.bnav{position:fixed;bottom:0;left:0;right:0;background:#fff;padding:10px 16px;display:flex;gap:10px;z-index:50;box-shadow:0 -2px 10px rgba(0,0,0,.08);border-top:1px solid var(--brd);}
+.bnav .btn{flex:1;}.bnav .btn-back{background:#f1f3f5;color:var(--txt);}
+
+/* Line buttons – compact grid */
+.line-section{margin-bottom:10px;}
+.line-section-title{font-size:.72rem;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;}
+.line-grid{display:flex;flex-wrap:wrap;gap:8px;}
+.line-btn{
+  flex:1 1 calc(33% - 8px);min-width:90px;
+  padding:14px 8px;border:3px solid var(--brd);border-radius:12px;background:#fafbfc;
+  cursor:pointer;text-align:center;transition:all .2s;
+}
+.line-btn:active{transform:scale(.96);}
+.line-btn.selected{border-color:var(--acc);background:#edf5fc;box-shadow:0 0 0 2px rgba(41,128,185,.15);}
+.line-btn .ln{font-size:1rem;font-weight:800;color:var(--pri);margin-bottom:2px;}
+.line-btn .ld{font-size:.62rem;color:var(--mut);line-height:1.3;}
+.line-info{margin-top:10px;padding:10px 12px;background:#f0f7ff;border-radius:8px;font-size:.8rem;color:var(--pri);display:none;}
+.line-info.show{display:block;}
+.line-info strong{font-size:.9rem;}
+
+/* Brenner */
+.bi{border:2px solid var(--brd);border-radius:10px;padding:12px;margin-bottom:8px;background:#fafbfc;transition:border-color .2s;}
+.bi.custom{border-color:var(--acc);background:#f0f7ff;}
+.bh{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.bh .tt{font-weight:700;font-size:.88rem;}
+.ba{display:flex;gap:6px;align-items:center;}
+.lnk{font-size:.72rem;color:var(--acc);cursor:pointer;background:none;border:none;padding:4px 6px;text-decoration:underline;font-weight:600;}
+.bf{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.bf .fld input{padding:9px 10px;font-size:.9rem;}
+.stog{display:flex;gap:4px;}
+.sbtn{flex:1;padding:9px 4px;border:2px solid var(--brd);background:#fff;border-radius:6px;font-size:.72rem;font-weight:600;cursor:pointer;text-align:center;transition:all .15s;line-height:1.2;}
+.sbtn.active{background:var(--pri);color:#fff;border-color:var(--pri);}
+
+/* Results */
+.rg{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.rc{background:#f8f9fa;border-radius:10px;padding:14px;text-align:center;border:2px solid transparent;}
+.rc .rl{font-size:.7rem;color:var(--mut);text-transform:uppercase;font-weight:600;letter-spacing:.3px;}
+.rc .rv{font-size:1.4rem;font-weight:800;margin-top:4px;}
+.rc.full{grid-column:1/-1;}
+.rc.ok{border-color:var(--ok);}.rc.ok .rv{color:var(--ok);}
+.rc.warn{border-color:var(--warn);}.rc.warn .rv{color:var(--warn);}
+.rc.bad{border-color:var(--bad);}.rc.bad .rv{color:var(--bad);}
+
+/* Belt */
+.bwrap{position:relative;width:100%;overflow-x:auto;padding:16px 0;min-height:240px;}
+.binn{position:relative;min-width:100%;height:220px;}
+.bline{position:absolute;top:50%;left:28px;right:28px;height:14px;background:var(--pri);transform:translateY(-50%);border-radius:3px;z-index:1;}
+.barr{position:absolute;top:50%;transform:translateY(-50%);font-size:1.2rem;color:var(--pri);z-index:2;font-weight:900;}
+.barr.l{left:6px;}.barr.r{right:6px;}
+.bot{position:absolute;top:50%;transform:translate(-50%,-50%);width:16px;height:16px;background:var(--acc);border-radius:50%;z-index:3;}
+.bv{position:absolute;z-index:4;display:flex;flex-direction:column;align-items:center;cursor:pointer;}
+.bv.top{bottom:55%;}.bv.bottom{top:55%;}
+.bs{width:42px;height:28px;}
+.bs.top{clip-path:polygon(18% 0%,82% 0%,100% 100%,0% 100%);}
+.bs.bottom{clip-path:polygon(0% 0%,100% 0%,82% 100%,18% 100%);}
+.bs.c-ok{background:var(--pri);}.bs.c-warn{background:var(--warn);}.bs.c-bad{background:var(--bad);}
+.bfl{display:flex;gap:1px;justify-content:center;font-size:.5rem;}
+.bv.bottom .bfl{order:-1;}
+.bl{font-size:.58rem;font-weight:700;color:var(--pri);white-space:nowrap;margin-top:1px;}
+.bdl{position:absolute;z-index:5;font-size:.55rem;color:var(--ok);font-weight:700;}
+.fahrt-label{position:absolute;z-index:5;font-size:.6rem;font-weight:600;color:var(--mut);}
+
+.dr{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--brd);font-size:.82rem;}
+.dr:last-child{border-bottom:none;}
+
+.sbox{width:100%;padding:11px 14px;border:2px solid var(--brd);border-radius:8px;font-size:.95rem;margin-bottom:10px;}
+.sbox:focus{outline:none;border-color:var(--acc);}
+.srow{display:flex;justify-content:space-between;align-items:center;padding:12px;border:1px solid var(--brd);border-radius:10px;margin-bottom:6px;background:#fafbfc;cursor:pointer;}
+.srow:active{background:#e8f0fe;}
+.sn{font-weight:700;font-size:.88rem;}
+.sm{font-size:.7rem;color:var(--mut);margin-top:2px;}
+.tag{display:inline-block;padding:2px 8px;border-radius:10px;font-size:.65rem;font-weight:700;color:#fff;}
+.tag-nl{background:#d35400;}.tag-sd{background:#7d3c98;}
+.empty{text-align:center;padding:24px 10px;color:#b0bec5;font-size:.85rem;}
+.info-note{background:#fef9e7;border:1px solid #f9e79f;border-radius:8px;padding:10px 12px;font-size:.76rem;color:#7d6608;line-height:1.5;}
+.exa{display:flex;flex-direction:column;gap:8px;margin-top:12px;}
+.o2-row{display:flex;align-items:center;gap:10px;margin-top:10px;padding:10px 12px;background:#f8f9fa;border-radius:8px;}
+.o2-row label{font-size:.8rem;font-weight:600;color:var(--txt);}
+.o2-row select{padding:8px 10px;border:2px solid var(--brd);border-radius:6px;font-size:.9rem;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-title">BRENNER-EINSTELLUNGSRECHNER</div>
+  <div class="pbar" id="pbar"></div>
+  <div class="slabels" id="slabels"></div>
+  <div class="ppct" id="ppct"></div>
+</div>
+
+<div class="content" id="content">
+
+  <!-- STEP 1: Linie & Produkt -->
+  <div class="sv" id="step1">
+    <div class="card">
+      <div class="ct">Linie auswählen</div>
+      <div class="line-section">
+        <div class="line-section-title">Nasslack</div>
+        <div class="line-grid" id="nlGrid"></div>
+      </div>
+      <div class="line-section">
+        <div class="line-section-title">Siebdruck</div>
+        <div class="line-grid" id="sdGrid"></div>
+      </div>
+      <div class="line-info" id="lineInfo"></div>
+      <div class="o2-row">
+        <label>Sauerstoff eingespeist?</label>
+        <select id="sauerstoff"><option value="nein">Nein</option><option value="ja">Ja</option></select>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ct">Produkt</div>
+      <div class="g1">
+        <div class="fld"><label>Produktname / Artikel-Nr.</label><input type="text" id="produktName" placeholder="z.B. Flasche XY 200ml"></div>
+        <div class="fld"><label>Bemerkung (optional)</label><input type="text" id="bemerkung" placeholder="z.B. Sonderkonfiguration"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ct">Gespeicherte Konfiguration laden</div>
+      <input type="text" class="sbox" id="searchInput" placeholder="Suchen..." oninput="renderSaved()">
+      <div id="savedList"></div>
+    </div>
+  </div>
+
+  <!-- STEP 2: Brenner -->
+  <div class="sv" id="step2">
+    <div class="card">
+      <div class="ct">Standard-Brenner-Einstellungen</div>
+      <div class="cs">Gelten für alle Brenner, sofern nicht individuell überschrieben.</div>
+      <div class="g2">
+        <div class="fld"><label>Größe (mm)</label><input type="number" id="defaultGroesse" value="270" min="1"></div>
+        <div class="fld"><label>Lochreihen</label><input type="number" id="defaultLochreihen" value="10" min="1" max="20"></div>
+      </div>
+      <div class="g2" style="margin-top:8px;">
+        <div class="fld"><label>Abstand (cm)</label><input type="number" id="defaultAbstand" value="3" min="0" step="0.5"></div>
+        <div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div class="ct" style="margin-bottom:0;">Brenner (<span id="brennerCount">4</span>)</div>
+        <button class="btn btn-pri btn-sm" onclick="addBrenner()" style="width:auto;">+ Hinzufügen</button>
+      </div>
+      <div id="brennerList"></div>
+    </div>
+    <div class="info-note">
+      <strong>Hinweise:</strong><br>
+      3 / 4 / 6 Lochreihen = 1 L/min pro mm Arbeitsbreite<br>
+      10 Lochreihen = 3 L/min pro mm Arbeitsbreite<br>
+      Bei Sauerstoffeinspeisung: Faktor &times; 1,5
+    </div>
+  </div>
+
+  <!-- STEP 3: Ansicht -->
+  <div class="sv" id="step3">
+    <div class="card">
+      <div class="ct">Maschinenansicht</div>
+      <div class="cs">Brenneranordnung entlang der Fahrtrichtung. Antippen zum Bearbeiten.</div>
+      <div class="bwrap"><div class="binn" id="beltInner">
+        <span class="barr l">&raquo;</span>
+        <div class="bline"></div>
+        <span class="barr r">&raquo;</span>
+      </div></div>
+    </div>
+    <div class="card">
+      <div class="ct">Einzelauswertung je Brenner</div>
+      <div id="einzelAuswertung"></div>
+    </div>
+  </div>
+
+  <!-- STEP 4: Ergebnis -->
+  <div class="sv" id="step4">
+    <div class="card">
+      <div class="ct">Ergebnis</div>
+      <div class="rg" id="resultGrid"></div>
+    </div>
+    <div class="card">
+      <div class="ct">Zusammenfassung</div>
+      <div id="summary"></div>
+    </div>
+    <div class="card">
+      <div class="ct">Speichern und Exportieren</div>
+      <div class="exa">
+        <button class="btn btn-ok" onclick="saveProduct()">Produkt speichern</button>
+        <button class="btn btn-pri" onclick="exportExcel()">📊 Excel exportieren</button>
+        <button class="btn btn-pri" style="background:#c0392b;" onclick="exportPDF()">📄 PDF exportieren</button>
+        <button class="btn btn-pri" style="background:#d35400;" onclick="sendEmail()">📧 Per E-Mail senden</button>
+        <button class="btn btn-ghost" onclick="resetForm()">Neue Konfiguration</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="bnav" id="bnav">
+  <button class="btn btn-back" id="btnBack" onclick="prevStep()">Zurück</button>
+  <button class="btn btn-pri" id="btnNext" onclick="nextStep()">Weiter</button>
+</div>
+
+<script>
+const LINES={
+  NL1:{label:'Nasslack 1',type:'Nasslack',nr:'NL1',anlagen:[3000,3000,1500],luft:7500,desc:'2\u00D73.000 + 1\u00D71.500 L'},
+  NL2:{label:'Nasslack 2',type:'Nasslack',nr:'NL2',anlagen:[3000,3000,1500],luft:7500,desc:'2\u00D73.000 + 1\u00D71.500 L'},
+  NL3:{label:'Nasslack 3',type:'Nasslack',nr:'NL3',anlagen:[3000,3000,1500],luft:7500,desc:'2×3.000 + 1×1.500 L'},
+  'K15-1H':{label:'K15-1H',type:'Siebdruck',nr:'K15-1H',anlagen:[3000],luft:3000,desc:'1\u00D73.000 L'},
+  'K15-2H':{label:'K15-2H',type:'Siebdruck',nr:'K15-2H',anlagen:[3000],luft:3000,desc:'1\u00D73.000 L'},
+  'K15-3H':{label:'K15-3H',type:'Siebdruck',nr:'K15-3H',anlagen:[3000],luft:3000,desc:'1\u00D73.000 L'},
+  'K15-4H':{label:'K15-4H',type:'Siebdruck',nr:'K15-4H',anlagen:[3000],luft:3000,desc:'1\u00D73.000 L'},
+};
+let selectedLine=null;
+
+function renderLineButtons(){
+  const nG=document.getElementById('nlGrid'),sG=document.getElementById('sdGrid');
+  nG.innerHTML='';sG.innerHTML='';
+  Object.entries(LINES).forEach(([k,v])=>{
+    const d=document.createElement('div');
+    d.className='line-btn'+(selectedLine===k?' selected':'');
+    d.innerHTML=`<div class="ln">${v.label}</div><div class="ld">${v.desc}</div>`;
+    d.onclick=()=>selectLine(k);
+    if(v.type==='Nasslack')nG.appendChild(d);else sG.appendChild(d);
+  });
+  const info=document.getElementById('lineInfo');
+  if(selectedLine&&LINES[selectedLine]){
+    const L=LINES[selectedLine];
+    info.innerHTML=`<strong>${L.label}</strong> \u2014 ${L.desc} \u2014 Max. ${L.luft.toLocaleString('de-DE')} L/min`;
+    info.classList.add('show');
+  } else { info.classList.remove('show'); }
+}
+
+function selectLine(k){ selectedLine=k; renderLineButtons(); }
+
+const STEPS=[
+  {id:'step1',label:'Linie & Produkt'},
+  {id:'step2',label:'Brenner'},
+  {id:'step3',label:'Ansicht'},
+  {id:'step4',label:'Ergebnis'},
+];
+let cStep=0;
+
+function renderProgress(){
+  const bar=document.getElementById('pbar'),labels=document.getElementById('slabels');
+  let bH='',lH='';
+  STEPS.forEach((s,i)=>{
+    const cls=i<cStep?'done':i===cStep?'active':'';
+    bH+=`<div class="sdot ${cls}" onclick="goTo(${i})">${i<cStep?'\u2713':i+1}</div>`;
+    if(i<STEPS.length-1)bH+=`<div class="sline ${i<cStep?'done':''}"></div>`;
+    lH+=`<div class="slbl ${cls}">${s.label}</div>`;
+  });
+  bar.innerHTML=bH;labels.innerHTML=lH;
+  document.getElementById('ppct').textContent=Math.round((cStep/(STEPS.length-1))*100)+'% abgeschlossen';
+}
+
+function showStep(){
+  STEPS.forEach((s,i)=>document.getElementById(s.id).classList.toggle('active',i===cStep));
+  document.getElementById('btnBack').style.display=cStep===0?'none':'';
+  const bn=document.getElementById('btnNext');
+  bn.style.display=cStep===STEPS.length-1?'none':'';
+  bn.textContent='Weiter';
+  renderProgress();
+  if(cStep>=2)calculate();
+  if(cStep===0)renderSaved();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function nextStep(){
+  if(cStep===0){
+    if(!selectedLine){alert('Bitte eine Linie auswählen.');return;}
+    const n=document.getElementById('produktName').value.trim();
+    if(!n){document.getElementById('produktName').focus();document.getElementById('produktName').style.borderColor='var(--bad)';setTimeout(()=>document.getElementById('produktName').style.borderColor='',1500);return;}
+  }
+  if(cStep<STEPS.length-1){cStep++;showStep();}
+}
+function prevStep(){if(cStep>0){cStep--;showStep();}}
+function goTo(i){if(i<=cStep+1){cStep=i;showStep();}}
+
+let brenners=[],nxId=1,editKey=null;
+function createB(side='links'){return{id:nxId++,custom:false,side,groesse:null,lochreihen:null,abstand:null};}
+function gV(id){return parseFloat(document.getElementById(id)?.value)||0;}
+function bG(b){return b.custom&&b.groesse!==null?b.groesse:gV('defaultGroesse');}
+function bL(b){return b.custom&&b.lochreihen!==null?b.lochreihen:gV('defaultLochreihen');}
+function bA(b){return b.custom&&b.abstand!==null?b.abstand:gV('defaultAbstand');}
+function luftMm(lr,o2){let v=lr>=10?3:1;return o2?v*1.5:v;}
+
+function addBrenner(){
+  const last=brenners.length>0?brenners[brenners.length-1].side:'rechts';
+  brenners.push(createB(last==='links'?'rechts':'links'));renderBrenners();
+}
+function removeBrenner(id){if(brenners.length<=1)return;brenners=brenners.filter(b=>b.id!==id);renderBrenners();}
+function toggleCustom(id){
+  const b=brenners.find(x=>x.id===id);b.custom=!b.custom;
+  if(b.custom){b.groesse=gV('defaultGroesse');b.lochreihen=gV('defaultLochreihen');b.abstand=gV('defaultAbstand');}
+  renderBrenners();
+}
+function setSide(id,s){brenners.find(x=>x.id===id).side=s;renderBrenners();}
+function uBF(id,f,v){brenners.find(x=>x.id===id)[f]=parseFloat(v)||0;}
+
+function renderBrenners(){
+  document.getElementById('brennerCount').textContent=brenners.length;
+  document.getElementById('brennerList').innerHTML=brenners.map((b,i)=>{
+    const c=b.custom,gr=bG(b),lr=bL(b),ab=bA(b);
+    return `<div class="bi ${c?'custom':''}">
+      <div class="bh"><span class="tt">Brenner ${i+1}</span>
+        <div class="ba">
+          <button class="lnk" onclick="toggleCustom(${b.id})">${c?'Standard':'Individuell'}</button>
+          ${brenners.length>1?`<button class="btn btn-bad btn-sm" onclick="removeBrenner(${b.id})" style="width:auto;padding:6px 10px;">\u2715</button>`:''}
+        </div>
+      </div>
+      <div class="bf">
+        <div class="fld"><label>Größe (mm)</label><input type="number" value="${gr}" ${c?'':'disabled'} oninput="uBF(${b.id},'groesse',this.value)"></div>
+        <div class="fld"><label>Lochreihen</label><input type="number" value="${lr}" ${c?'':'disabled'} oninput="uBF(${b.id},'lochreihen',this.value)"></div>
+        <div class="fld"><label>Abstand (cm)</label><input type="number" value="${ab}" step="0.5" ${c?'':'disabled'} oninput="uBF(${b.id},'abstand',this.value)"></div>
+        <div class="fld"><label>Position (Fahrtrichtung)</label>
+          <div class="stog">
+            <div class="sbtn ${b.side==='links'?'active':''}" onclick="setSide(${b.id},'links')">Links</div>
+            <div class="sbtn ${b.side==='rechts'?'active':''}" onclick="setSide(${b.id},'rechts')">Rechts</div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function calculate(){
+  const L=LINES[selectedLine]||{};
+  const mx=L.luft||0,o2=document.getElementById('sauerstoff').value==='ja';
+  let ges=0;const ds=[];
+  brenners.forEach((b,i)=>{
+    const gr=bG(b),lr=bL(b),l=luftMm(lr,o2),bd=l*gr;ges+=bd;
+    ds.push({i,gr,lr,l,bd,ab:bA(b),side:b.side});
+  });
+  const au=mx>0?(ges/mx)*100:0,vb=mx-ges;
+  const cls=au>100?'bad':au>80?'warn':'ok';
+  const st=au>100?'\u26D4 ÜBERSCHRITTEN':au>80?'\u26A0 HOHE AUSLASTUNG':'\u2705 IM GRÜNEN BEREICH';
+
+  document.getElementById('resultGrid').innerHTML=`
+    <div class="rc"><div class="rl">Gesamt-Luftbedarf</div><div class="rv">${ges.toLocaleString('de-DE')} L/min</div></div>
+    <div class="rc ${cls}"><div class="rl">Auslastung</div><div class="rv">${au.toFixed(1)}%</div></div>
+    <div class="rc ${cls}"><div class="rl">Verbleibend</div><div class="rv">${vb.toLocaleString('de-DE')} L/min</div></div>
+    <div class="rc full ${cls}"><div class="rv">${st}</div></div>`;
+
+  document.getElementById('summary').innerHTML=`
+    <div class="dr"><span>Produkt</span><strong>${document.getElementById('produktName').value.trim()}</strong></div>
+    <div class="dr"><span>Linie</span><strong>${L.label||'-'}</strong></div>
+    <div class="dr"><span>Anlagenkonfiguration</span><strong>${L.desc||'-'}</strong></div>
+    <div class="dr"><span>Max. Luftdurchfluss</span><strong>${mx.toLocaleString('de-DE')} L/min</strong></div>
+    <div class="dr"><span>Sauerstoff</span><strong>${o2?'Ja':'Nein'}</strong></div>
+    <div class="dr"><span>Anzahl Brenner</span><strong>${brenners.length}</strong></div>
+    <div class="dr"><span>Gesamt-Bedarf</span><strong>${ges.toLocaleString('de-DE')} L/min</strong></div>
+    <div class="dr"><span>Auslastung</span><strong>${au.toFixed(1)}%</strong></div>`;
+
+  document.getElementById('einzelAuswertung').innerHTML=ds.map(d=>{
+    const p=mx>0?((d.bd/mx)*100).toFixed(1):'0';
+    return `<div class="dr"><span>Brenner ${d.i+1} \u2014 ${d.gr}mm, ${d.lr} LR, ${d.side==='links'?'Links':'Rechts'}</span><strong>${d.bd.toLocaleString('de-DE')} L/min (${p}%)</strong></div>`;
+  }).join('');
+  renderBelt(ds,mx);
+}
+
+function renderBelt(ds,mx){
+  const inn=document.getElementById('beltInner');
+  inn.querySelectorAll('.bv,.bot,.bdl,.fahrt-label').forEach(e=>e.remove());
+  if(!ds.length)return;
+  const cW=inn.offsetWidth||500,sX=50,eX=cW-50,sp=(eX-sX)/(ds.length+1);
+  const ta=mx>0?(ds.reduce((s,d)=>s+d.bd,0)/mx)*100:0;
+  const cc=ta>100?'c-bad':ta>80?'c-warn':'c-ok';
+  const flL=document.createElement('div');flL.className='fahrt-label';flL.style.cssText='top:2px;left:50%;transform:translateX(-50%);';flL.textContent='\u2191 In Fahrtrichtung links';inn.appendChild(flL);
+  const flR=document.createElement('div');flR.className='fahrt-label';flR.style.cssText='bottom:2px;left:50%;transform:translateX(-50%);';flR.textContent='\u2193 In Fahrtrichtung rechts';inn.appendChild(flR);
+  ds.forEach((d,i)=>{
+    const x=sX+sp*(i+1),isL=d.side==='links';
+    const fl='\u{1F525}'.repeat(Math.min(Math.ceil(d.lr/3),4));
+    const el=document.createElement('div');
+    el.className=`bv ${isL?'top':'bottom'}`;
+    el.style.left=x+'px';el.style.transform='translateX(-50%)';
+    el.innerHTML=isL
+      ?`<div class="bl">B${i+1}: ${d.gr}mm</div><div class="bs top ${cc}"></div><div class="bfl">${fl}</div>`
+      :`<div class="bfl">${fl}</div><div class="bs bottom ${cc}"></div><div class="bl">B${i+1}: ${d.gr}mm</div>`;
+    el.onclick=()=>{cStep=1;showStep();setTimeout(()=>document.querySelectorAll('.bi')[i]?.scrollIntoView({behavior:'smooth',block:'center'}),300);};
+    inn.appendChild(el);
+    const bot=document.createElement('div');bot.className='bot';bot.style.left=x+'px';inn.appendChild(bot);
+    const dl=document.createElement('div');dl.className='bdl';dl.textContent=d.ab+'cm';
+    dl.style.left=(x-6)+'px';dl.style.top=isL?'54%':'38%';inn.appendChild(dl);
+  });
+}
+
+// Storage
+function getP(){try{return JSON.parse(localStorage.getItem('brenner_products')||'{}')}catch{return {};}}
+function setP(p){localStorage.setItem('brenner_products',JSON.stringify(p));}
+function collect(){
+  const L=LINES[selectedLine]||{};
+  return{produktName:document.getElementById('produktName').value.trim(),linie:L.type||'',linieNr:L.nr||'',linieLabel:L.label||'',anlagenConfig:L.desc||'',maxLuft:L.luft||0,bemerkung:document.getElementById('bemerkung').value.trim(),sauerstoff:document.getElementById('sauerstoff').value,defaultGroesse:gV('defaultGroesse'),defaultLochreihen:gV('defaultLochreihen'),defaultAbstand:gV('defaultAbstand'),brenners:brenners.map(b=>({...b})),savedAt:new Date().toISOString(),selectedLine};
+}
+function loadState(s){
+  if(s.selectedLine&&LINES[s.selectedLine])selectLine(s.selectedLine);
+  document.getElementById('produktName').value=s.produktName||'';
+  document.getElementById('bemerkung').value=s.bemerkung||'';
+  document.getElementById('sauerstoff').value=s.sauerstoff||'nein';
+  document.getElementById('defaultGroesse').value=s.defaultGroesse||270;
+  document.getElementById('defaultLochreihen').value=s.defaultLochreihen||10;
+  document.getElementById('defaultAbstand').value=s.defaultAbstand||3;
+  brenners=(s.brenners||[]).map(b=>({...b}));nxId=Math.max(...brenners.map(b=>b.id),0)+1;
+  renderBrenners();
+}
+function saveProduct(){
+  const n=document.getElementById('produktName').value.trim();
+  if(!n){alert('Bitte Produktname eingeben.');return;}
+  const L=LINES[selectedLine]||{};
+  const key=editKey||(n+'_'+(L.nr||'')+'_'+Date.now());
+  const ps=getP();ps[key]=collect();setP(ps);editKey=key;
+  alert('Gespeichert: '+n);
+}
+function renderSaved(){
+  const ps=getP(),q=(document.getElementById('searchInput')?.value||'').toLowerCase();
+  const ks=Object.keys(ps).filter(k=>{const p=ps[k];return!q||(p.produktName||'').toLowerCase().includes(q)||(p.linieNr||'').toLowerCase().includes(q)||(p.linieLabel||'').toLowerCase().includes(q);}).sort((a,b)=>(ps[b].savedAt||'').localeCompare(ps[a].savedAt||''));
+  const el=document.getElementById('savedList');
+  if(!ks.length){el.innerHTML=`<div class="empty">${q?'Keine Treffer.':'Noch keine gespeicherten Konfigurationen.'}</div>`;return;}
+  el.innerHTML=ks.map(k=>{const p=ps[k],d=p.savedAt?new Date(p.savedAt).toLocaleDateString('de-DE'):'';
+    return`<div class="srow" onclick="loadAndGo('${k}')"><div><div class="sn">${p.produktName||'-'}</div><div class="sm"><span class="tag ${p.linie==='Nasslack'?'tag-nl':'tag-sd'}">${p.linieLabel||p.linie||'-'}</span> \u00B7 ${(p.brenners||[]).length} Brenner \u00B7 ${d}</div></div><button class="btn btn-bad btn-sm" onclick="event.stopPropagation();delP('${k}')" style="width:auto;padding:6px 10px;">\u2715</button></div>`;
+  }).join('');
+}
+function loadAndGo(k){const p=getP()[k];if(!p)return;editKey=k;loadState(p);cStep=1;showStep();}
+function delP(k){if(!confirm('Konfiguration löschen?'))return;const p=getP();delete p[k];setP(p);renderSaved();}
+function resetForm(){
+  editKey=null;selectedLine=null;
+  document.getElementById('produktName').value='';document.getElementById('bemerkung').value='';
+  document.getElementById('sauerstoff').value='nein';
+  document.getElementById('defaultGroesse').value=270;document.getElementById('defaultLochreihen').value=10;document.getElementById('defaultAbstand').value=3;
+  brenners=[];nxId=1;
+  ['links','rechts','links','rechts'].forEach(s=>brenners.push(createB(s)));
+  renderBrenners();renderLineButtons();cStep=0;showStep();
+}
+
+// XLSX
+function exportExcel(){generateXLSX(collect());}
+function generateXLSX(s){
+  const o2=s.sauerstoff==='ja',rows=[];
+  rows.push(['Brenner-Einstellungsrechner \u2013 Produktkonfiguration']);
+  rows.push([]);
+  rows.push(['Produkt',s.produktName]);rows.push(['Linie',s.linieLabel||'']);rows.push(['Linien-Nr.',s.linieNr||'']);
+  rows.push(['Anlagenkonfiguration',s.anlagenConfig||'']);rows.push(['Bemerkung',s.bemerkung||'']);
+  rows.push(['Datum',s.savedAt?new Date(s.savedAt).toLocaleString('de-DE'):new Date().toLocaleString('de-DE')]);
+  rows.push([]);rows.push(['ANLAGEN-PARAMETER']);
+  rows.push(['Max. Luftdurchfluss (L/min)',s.maxLuft]);rows.push(['Sauerstoff eingespeist',o2?'Ja':'Nein']);
+  rows.push([]);rows.push(['STANDARD-BRENNER']);
+  rows.push(['Brenner Größe (mm)',s.defaultGroesse]);rows.push(['Lochreihen',s.defaultLochreihen]);rows.push(['Abstand (cm)',s.defaultAbstand]);
+  rows.push([]);rows.push(['BRENNER-KONFIGURATION']);
+  rows.push(['Nr.','Größe (mm)','Lochreihen','Abstand (cm)','Position (Fahrtrichtung)','Individuell','Luft/mm (L/min)','Bedarf (L/min)']);
+  let ges=0;
+  (s.brenners||[]).forEach((b,i)=>{
+    const gr=b.custom&&b.groesse!==null?b.groesse:s.defaultGroesse;
+    const lr=b.custom&&b.lochreihen!==null?b.lochreihen:s.defaultLochreihen;
+    const ab=b.custom&&b.abstand!==null?b.abstand:s.defaultAbstand;
+    let l=lr>=10?3:1;if(o2)l*=1.5;const bd=l*gr;ges+=bd;
+    rows.push([i+1,gr,lr,ab,b.side==='links'?'Links':'Rechts',b.custom?'Ja':'Nein',l,bd]);
+  });
+  rows.push([]);rows.push(['ERGEBNIS']);
+  rows.push(['Gesamt-Luftbedarf (L/min)',ges]);
+  const au=s.maxLuft>0?((ges/s.maxLuft)*100):0;
+  rows.push(['Auslastung (%)',Math.round(au*10)/10]);
+  rows.push(['Verbleibende Kapazität (L/min)',s.maxLuft-ges]);
+  rows.push(['Status',au>100?'ÜBERSCHRITTEN':au>80?'HOHE AUSLASTUNG':'OK']);
+
+  const ss=[],ssMap={};
+  function ssI(str){str=String(str);if(ssMap[str]!==undefined)return ssMap[str];const idx=ss.length;ss.push(str);ssMap[str]=idx;return idx;}
+  const boldRows=new Set([0,9,13,18,19,rows.length-5]);
+  let sd='';
+  rows.forEach((r,ri)=>{sd+='<row r="'+(ri+1)+'">';r.forEach((c,ci)=>{
+    const ref=String.fromCharCode(65+ci)+(ri+1),isBold=boldRows.has(ri),st=isBold?' s="1"':'';
+    if(typeof c==='number')sd+=`<c r="${ref}"${st}><v>${c}</v></c>`;
+    else sd+=`<c r="${ref}" t="s"${st}><v>${ssI(c)}</v></c>`;
+  });sd+='</row>';});
+
+  const files={
+    '[Content_Types].xml':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>',
+    '_rels/.rels':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>',
+    'xl/_rels/workbook.xml.rels':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>',
+    'xl/workbook.xml':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Konfiguration" sheetId="1" r:id="rId1"/></sheets></workbook>',
+    'xl/styles.xml':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs></styleSheet>',
+  };
+  files['xl/worksheets/sheet1.xml']='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols><col min="1" max="1" width="35" customWidth="1"/><col min="2" max="8" width="18" customWidth="1"/></cols><sheetData>'+sd+'</sheetData></worksheet>';
+  files['xl/sharedStrings.xml']='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="'+ss.length+'" uniqueCount="'+ss.length+'">'+ss.map(s=>'<si><t>'+esc(s)+'</t></si>').join('')+'</sst>';
+
+  const zip=buildZip(files);
+  const blob=new Blob([zip],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`Brenner_${(s.produktName||'Konfig').replace(/[^a-zA-Z0-9\u00C4\u00D6\u00DC\u00E4\u00F6\u00FC\u00DF\-]/g,'_')}_${s.linieNr||'XX'}.xlsx`;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function buildZip(files){
+  const enc=new TextEncoder();
+  const entries=Object.entries(files).map(([n,c])=>({name:enc.encode(n),data:enc.encode(c)}));
+  let offset=0;const lhs=[],chs=[];
+  entries.forEach(e=>{
+    const lh=new Uint8Array(30+e.name.length+e.data.length);const dv=new DataView(lh.buffer);
+    dv.setUint32(0,0x04034b50,true);dv.setUint16(4,20,true);dv.setUint16(6,0,true);dv.setUint16(8,0,true);
+    dv.setUint16(10,0,true);dv.setUint16(12,0,true);
+    const crc=crc32(e.data);dv.setUint32(14,crc,true);dv.setUint32(18,e.data.length,true);dv.setUint32(22,e.data.length,true);
+    dv.setUint16(26,e.name.length,true);dv.setUint16(28,0,true);
+    lh.set(e.name,30);lh.set(e.data,30+e.name.length);lhs.push(lh);
+    const ch=new Uint8Array(46+e.name.length);const cv=new DataView(ch.buffer);
+    cv.setUint32(0,0x02014b50,true);cv.setUint16(4,20,true);cv.setUint16(6,20,true);
+    cv.setUint16(8,0,true);cv.setUint16(10,0,true);cv.setUint16(12,0,true);cv.setUint16(14,0,true);
+    cv.setUint32(16,crc,true);cv.setUint32(20,e.data.length,true);cv.setUint32(24,e.data.length,true);
+    cv.setUint16(28,e.name.length,true);cv.setUint16(30,0,true);cv.setUint16(32,0,true);
+    cv.setUint16(34,0,true);cv.setUint16(36,0,true);cv.setUint32(38,0,true);cv.setUint32(42,offset,true);
+    ch.set(e.name,46);chs.push(ch);offset+=lh.length;
+  });
+  const cOff=offset;let cSz=0;chs.forEach(c=>cSz+=c.length);
+  const eocd=new Uint8Array(22);const ev=new DataView(eocd.buffer);
+  ev.setUint32(0,0x06054b50,true);ev.setUint16(4,0,true);ev.setUint16(6,0,true);
+  ev.setUint16(8,entries.length,true);ev.setUint16(10,entries.length,true);
+  ev.setUint32(12,cSz,true);ev.setUint32(16,cOff,true);ev.setUint16(20,0,true);
+  const r=new Uint8Array(offset+cSz+22);let p=0;
+  lhs.forEach(l=>{r.set(l,p);p+=l.length;});chs.forEach(c=>{r.set(c,p);p+=c.length;});r.set(eocd,p);
+  return r;
+}
+function crc32(d){let c=0xFFFFFFFF;for(let i=0;i<d.length;i++){c^=d[i];for(let j=0;j<8;j++)c=(c>>>1)^(c&1?0xEDB88320:0);}return(c^0xFFFFFFFF)>>>0;}
+
+// INIT
+renderLineButtons();
+['links','rechts','links','rechts'].forEach(s=>brenners.push(createB(s)));
+renderBrenners();showStep();
+</script>
+<script>
+const LINES={
+  NL1:{label:'Nasslack 1',type:'Nasslack',nr:'NL1',anlagen:[3000,3000,1500],luft:7500,desc:'2\u00D73.000 + 1\u00D71.500 L'},
+  NL2:{label:'Nasslack 2',type:'Nasslack',nr:'NL2',anlagen:[3000,3000,1500],luft:7500,desc:'2\u00D73.000 + 1\u00D71.500 L'},
+  NL3:{label:'Nasslack 3',type:'Nasslack',nr:'NL3',anlagen:[3000,3000,1500],luft:7500,desc:'2×3.000 + 1×1.500 L'},
+  'K15-1H':{label:'K15-1H',type:'Siebdruck',nr:'K15-1H',anlagen:[3000],luft:3000,desc:'1\u00D73.000 L'},
+  'K15-2H':{label:'K15-2H',type:'Siebdruck',nr:'K15-2H',anlagen:[3000],luft:3000,desc:'1\u00D73.000 L'},
+  'K15-3H':{label:'K15-3H',type:'Siebdruck',nr:'K15-3H',anlagen:[3000],luft:3000,desc:'1\u00D73.000 L'},
+  'K15-4H':{label:'K15-4H',type:'Siebdruck',nr:'K15-4H',anlagen:[3000],luft:3000,desc:'1\u00D73.000 L'},
+};
+let selectedLine=null;
+
+function renderLineButtons(){
+  const nG=document.getElementById('nlGrid'),sG=document.getElementById('sdGrid');
+  nG.innerHTML='';sG.innerHTML='';
+  Object.entries(LINES).forEach(([k,v])=>{
+    const d=document.createElement('div');
+    d.className='line-btn'+(selectedLine===k?' selected':'');
+    d.innerHTML=`<div class="ln">${v.label}</div><div class="ld">${v.desc}</div>`;
+    d.onclick=()=>selectLine(k);
+    if(v.type==='Nasslack')nG.appendChild(d);else sG.appendChild(d);
+  });
+  const info=document.getElementById('lineInfo');
+  if(selectedLine&&LINES[selectedLine]){
+    const L=LINES[selectedLine];
+    info.innerHTML=`<strong>${L.label}</strong> \u2014 ${L.desc} \u2014 Max. ${L.luft.toLocaleString('de-DE')} L/min`;
+    info.classList.add('show');
+  } else { info.classList.remove('show'); }
+}
+
+function selectLine(k){ selectedLine=k; renderLineButtons(); }
+
+const STEPS=[
+  {id:'step1',label:'Linie & Produkt'},
+  {id:'step2',label:'Brenner'},
+  {id:'step3',label:'Ansicht'},
+  {id:'step4',label:'Ergebnis'},
+];
+let cStep=0;
+
+function renderProgress(){
+  const bar=document.getElementById('pbar'),labels=document.getElementById('slabels');
+  let bH='',lH='';
+  STEPS.forEach((s,i)=>{
+    const cls=i<cStep?'done':i===cStep?'active':'';
+    bH+=`<div class="sdot ${cls}" onclick="goTo(${i})">${i<cStep?'\u2713':i+1}</div>`;
+    if(i<STEPS.length-1)bH+=`<div class="sline ${i<cStep?'done':''}"></div>`;
+    lH+=`<div class="slbl ${cls}">${s.label}</div>`;
+  });
+  bar.innerHTML=bH;labels.innerHTML=lH;
+  document.getElementById('ppct').textContent=Math.round((cStep/(STEPS.length-1))*100)+'% abgeschlossen';
+}
+
+function showStep(){
+  STEPS.forEach((s,i)=>document.getElementById(s.id).classList.toggle('active',i===cStep));
+  document.getElementById('btnBack').style.display=cStep===0?'none':'';
+  const bn=document.getElementById('btnNext');
+  bn.style.display=cStep===STEPS.length-1?'none':'';
+  bn.textContent='Weiter';
+  renderProgress();
+  if(cStep>=2)calculate();
+  if(cStep===0)renderSaved();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function nextStep(){
+  if(cStep===0){
+    if(!selectedLine){alert('Bitte eine Linie auswählen.');return;}
+    const n=document.getElementById('produktName').value.trim();
+    if(!n){document.getElementById('produktName').focus();document.getElementById('produktName').style.borderColor='var(--bad)';setTimeout(()=>document.getElementById('produktName').style.borderColor='',1500);return;}
+  }
+  if(cStep<STEPS.length-1){cStep++;showStep();}
+}
+function prevStep(){if(cStep>0){cStep--;showStep();}}
+function goTo(i){if(i<=cStep+1){cStep=i;showStep();}}
+
+let brenners=[],nxId=1,editKey=null;
+function createB(side='links'){return{id:nxId++,custom:false,side,groesse:null,lochreihen:null,abstand:null};}
+function gV(id){return parseFloat(document.getElementById(id)?.value)||0;}
+function bG(b){return b.custom&&b.groesse!==null?b.groesse:gV('defaultGroesse');}
+function bL(b){return b.custom&&b.lochreihen!==null?b.lochreihen:gV('defaultLochreihen');}
+function bA(b){return b.custom&&b.abstand!==null?b.abstand:gV('defaultAbstand');}
+function luftMm(lr,o2){let v=lr>=10?3:1;return o2?v*1.5:v;}
+
+function addBrenner(){
+  const last=brenners.length>0?brenners[brenners.length-1].side:'rechts';
+  brenners.push(createB(last==='links'?'rechts':'links'));renderBrenners();
+}
+function removeBrenner(id){if(brenners.length<=1)return;brenners=brenners.filter(b=>b.id!==id);renderBrenners();}
+function toggleCustom(id){
+  const b=brenners.find(x=>x.id===id);b.custom=!b.custom;
+  if(b.custom){b.groesse=gV('defaultGroesse');b.lochreihen=gV('defaultLochreihen');b.abstand=gV('defaultAbstand');}
+  renderBrenners();
+}
+function setSide(id,s){brenners.find(x=>x.id===id).side=s;renderBrenners();}
+function uBF(id,f,v){brenners.find(x=>x.id===id)[f]=parseFloat(v)||0;}
+
+function renderBrenners(){
+  document.getElementById('brennerCount').textContent=brenners.length;
+  document.getElementById('brennerList').innerHTML=brenners.map((b,i)=>{
+    const c=b.custom,gr=bG(b),lr=bL(b),ab=bA(b);
+    return `<div class="bi ${c?'custom':''}">
+      <div class="bh"><span class="tt">Brenner ${i+1}</span>
+        <div class="ba">
+          <button class="lnk" onclick="toggleCustom(${b.id})">${c?'Standard':'Individuell'}</button>
+          ${brenners.length>1?`<button class="btn btn-bad btn-sm" onclick="removeBrenner(${b.id})" style="width:auto;padding:6px 10px;">\u2715</button>`:''}
+        </div>
+      </div>
+      <div class="bf">
+        <div class="fld"><label>Größe (mm)</label><input type="number" value="${gr}" ${c?'':'disabled'} oninput="uBF(${b.id},'groesse',this.value)"></div>
+        <div class="fld"><label>Lochreihen</label><input type="number" value="${lr}" ${c?'':'disabled'} oninput="uBF(${b.id},'lochreihen',this.value)"></div>
+        <div class="fld"><label>Abstand (cm)</label><input type="number" value="${ab}" step="0.5" ${c?'':'disabled'} oninput="uBF(${b.id},'abstand',this.value)"></div>
+        <div class="fld"><label>Position (Fahrtrichtung)</label>
+          <div class="stog">
+            <div class="sbtn ${b.side==='links'?'active':''}" onclick="setSide(${b.id},'links')">Links</div>
+            <div class="sbtn ${b.side==='rechts'?'active':''}" onclick="setSide(${b.id},'rechts')">Rechts</div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function calculate(){
+  const L=LINES[selectedLine]||{};
+  const mx=L.luft||0,o2=document.getElementById('sauerstoff').value==='ja';
+  let ges=0;const ds=[];
+  brenners.forEach((b,i)=>{
+    const gr=bG(b),lr=bL(b),l=luftMm(lr,o2),bd=l*gr;ges+=bd;
+    ds.push({i,gr,lr,l,bd,ab:bA(b),side:b.side});
+  });
+  const au=mx>0?(ges/mx)*100:0,vb=mx-ges;
+  const cls=au>100?'bad':au>80?'warn':'ok';
+  const st=au>100?'\u26D4 ÜBERSCHRITTEN':au>80?'\u26A0 HOHE AUSLASTUNG':'\u2705 IM GRÜNEN BEREICH';
+
+  document.getElementById('resultGrid').innerHTML=`
+    <div class="rc"><div class="rl">Gesamt-Luftbedarf</div><div class="rv">${ges.toLocaleString('de-DE')} L/min</div></div>
+    <div class="rc ${cls}"><div class="rl">Auslastung</div><div class="rv">${au.toFixed(1)}%</div></div>
+    <div class="rc ${cls}"><div class="rl">Verbleibend</div><div class="rv">${vb.toLocaleString('de-DE')} L/min</div></div>
+    <div class="rc full ${cls}"><div class="rv">${st}</div></div>`;
+
+  document.getElementById('summary').innerHTML=`
+    <div class="dr"><span>Produkt</span><strong>${document.getElementById('produktName').value.trim()}</strong></div>
+    <div class="dr"><span>Linie</span><strong>${L.label||'-'}</strong></div>
+    <div class="dr"><span>Anlagenkonfiguration</span><strong>${L.desc||'-'}</strong></div>
+    <div class="dr"><span>Max. Luftdurchfluss</span><strong>${mx.toLocaleString('de-DE')} L/min</strong></div>
+    <div class="dr"><span>Sauerstoff</span><strong>${o2?'Ja':'Nein'}</strong></div>
+    <div class="dr"><span>Anzahl Brenner</span><strong>${brenners.length}</strong></div>
+    <div class="dr"><span>Gesamt-Bedarf</span><strong>${ges.toLocaleString('de-DE')} L/min</strong></div>
+    <div class="dr"><span>Auslastung</span><strong>${au.toFixed(1)}%</strong></div>`;
+
+  document.getElementById('einzelAuswertung').innerHTML=ds.map(d=>{
+    const p=mx>0?((d.bd/mx)*100).toFixed(1):'0';
+    return `<div class="dr"><span>Brenner ${d.i+1} \u2014 ${d.gr}mm, ${d.lr} LR, ${d.side==='links'?'Links':'Rechts'}</span><strong>${d.bd.toLocaleString('de-DE')} L/min (${p}%)</strong></div>`;
+  }).join('');
+  renderBelt(ds,mx);
+}
+
+function renderBelt(ds,mx){
+  const inn=document.getElementById('beltInner');
+  inn.querySelectorAll('.bv,.bot,.bdl,.fahrt-label').forEach(e=>e.remove());
+  if(!ds.length)return;
+  const cW=inn.offsetWidth||500,sX=50,eX=cW-50,sp=(eX-sX)/(ds.length+1);
+  const ta=mx>0?(ds.reduce((s,d)=>s+d.bd,0)/mx)*100:0;
+  const cc=ta>100?'c-bad':ta>80?'c-warn':'c-ok';
+  const flL=document.createElement('div');flL.className='fahrt-label';flL.style.cssText='top:2px;left:50%;transform:translateX(-50%);';flL.textContent='\u2191 In Fahrtrichtung links';inn.appendChild(flL);
+  const flR=document.createElement('div');flR.className='fahrt-label';flR.style.cssText='bottom:2px;left:50%;transform:translateX(-50%);';flR.textContent='\u2193 In Fahrtrichtung rechts';inn.appendChild(flR);
+  ds.forEach((d,i)=>{
+    const x=sX+sp*(i+1),isL=d.side==='links';
+    const fl='\u{1F525}'.repeat(Math.min(Math.ceil(d.lr/3),4));
+    const el=document.createElement('div');
+    el.className=`bv ${isL?'top':'bottom'}`;
+    el.style.left=x+'px';el.style.transform='translateX(-50%)';
+    el.innerHTML=isL
+      ?`<div class="bl">B${i+1}: ${d.gr}mm</div><div class="bs top ${cc}"></div><div class="bfl">${fl}</div>`
+      :`<div class="bfl">${fl}</div><div class="bs bottom ${cc}"></div><div class="bl">B${i+1}: ${d.gr}mm</div>`;
+    el.onclick=()=>{cStep=1;showStep();setTimeout(()=>document.querySelectorAll('.bi')[i]?.scrollIntoView({behavior:'smooth',block:'center'}),300);};
+    inn.appendChild(el);
+    const bot=document.createElement('div');bot.className='bot';bot.style.left=x+'px';inn.appendChild(bot);
+    const dl=document.createElement('div');dl.className='bdl';dl.textContent=d.ab+'cm';
+    dl.style.left=(x-6)+'px';dl.style.top=isL?'54%':'38%';inn.appendChild(dl);
+  });
+}
+
+// Storage
+function getP(){try{return JSON.parse(localStorage.getItem('brenner_products')||'{}')}catch{return {};}}
+function setP(p){localStorage.setItem('brenner_products',JSON.stringify(p));}
+function collect(){
+  const L=LINES[selectedLine]||{};
+  return{produktName:document.getElementById('produktName').value.trim(),linie:L.type||'',linieNr:L.nr||'',linieLabel:L.label||'',anlagenConfig:L.desc||'',maxLuft:L.luft||0,bemerkung:document.getElementById('bemerkung').value.trim(),sauerstoff:document.getElementById('sauerstoff').value,defaultGroesse:gV('defaultGroesse'),defaultLochreihen:gV('defaultLochreihen'),defaultAbstand:gV('defaultAbstand'),brenners:brenners.map(b=>({...b})),savedAt:new Date().toISOString(),selectedLine};
+}
+function loadState(s){
+  if(s.selectedLine&&LINES[s.selectedLine])selectLine(s.selectedLine);
+  document.getElementById('produktName').value=s.produktName||'';
+  document.getElementById('bemerkung').value=s.bemerkung||'';
+  document.getElementById('sauerstoff').value=s.sauerstoff||'nein';
+  document.getElementById('defaultGroesse').value=s.defaultGroesse||270;
+  document.getElementById('defaultLochreihen').value=s.defaultLochreihen||10;
+  document.getElementById('defaultAbstand').value=s.defaultAbstand||3;
+  brenners=(s.brenners||[]).map(b=>({...b}));nxId=Math.max(...brenners.map(b=>b.id),0)+1;
+  renderBrenners();
+}
+function saveProduct(){
+  const n=document.getElementById('produktName').value.trim();
+  if(!n){alert('Bitte Produktname eingeben.');return;}
+  const L=LINES[selectedLine]||{};
+  const key=editKey||(n+'_'+(L.nr||'')+'_'+Date.now());
+  const ps=getP();ps[key]=collect();setP(ps);editKey=key;
+  alert('Gespeichert: '+n);
+}
+function renderSaved(){
+  const ps=getP(),q=(document.getElementById('searchInput')?.value||'').toLowerCase();
+  const ks=Object.keys(ps).filter(k=>{const p=ps[k];return!q||(p.produktName||'').toLowerCase().includes(q)||(p.linieNr||'').toLowerCase().includes(q)||(p.linieLabel||'').toLowerCase().includes(q);}).sort((a,b)=>(ps[b].savedAt||'').localeCompare(ps[a].savedAt||''));
+  const el=document.getElementById('savedList');
+  if(!ks.length){el.innerHTML=`<div class="empty">${q?'Keine Treffer.':'Noch keine gespeicherten Konfigurationen.'}</div>`;return;}
+  el.innerHTML=ks.map(k=>{const p=ps[k],d=p.savedAt?new Date(p.savedAt).toLocaleDateString('de-DE'):'';
+    return`<div class="srow" onclick="loadAndGo('${k}')"><div><div class="sn">${p.produktName||'-'}</div><div class="sm"><span class="tag ${p.linie==='Nasslack'?'tag-nl':'tag-sd'}">${p.linieLabel||p.linie||'-'}</span> \u00B7 ${(p.brenners||[]).length} Brenner \u00B7 ${d}</div></div><button class="btn btn-bad btn-sm" onclick="event.stopPropagation();delP('${k}')" style="width:auto;padding:6px 10px;">\u2715</button></div>`;
+  }).join('');
+}
+function loadAndGo(k){const p=getP()[k];if(!p)return;editKey=k;loadState(p);cStep=1;showStep();}
+function delP(k){if(!confirm('Konfiguration löschen?'))return;const p=getP();delete p[k];setP(p);renderSaved();}
+function resetForm(){
+  editKey=null;selectedLine=null;
+  document.getElementById('produktName').value='';document.getElementById('bemerkung').value='';
+  document.getElementById('sauerstoff').value='nein';
+  document.getElementById('defaultGroesse').value=270;document.getElementById('defaultLochreihen').value=10;document.getElementById('defaultAbstand').value=3;
+  brenners=[];nxId=1;
+  ['links','rechts','links','rechts'].forEach(s=>brenners.push(createB(s)));
+  renderBrenners();renderLineButtons();cStep=0;showStep();
+}
+
+// XLSX
+function exportExcel(){generateXLSX(collect());}
+function generateXLSX(s){
+  const o2=s.sauerstoff==='ja',rows=[];
+  rows.push(['Brenner-Einstellungsrechner \u2013 Produktkonfiguration']);
+  rows.push([]);
+  rows.push(['Produkt',s.produktName]);rows.push(['Linie',s.linieLabel||'']);rows.push(['Linien-Nr.',s.linieNr||'']);
+  rows.push(['Anlagenkonfiguration',s.anlagenConfig||'']);rows.push(['Bemerkung',s.bemerkung||'']);
+  rows.push(['Datum',s.savedAt?new Date(s.savedAt).toLocaleString('de-DE'):new Date().toLocaleString('de-DE')]);
+  rows.push([]);rows.push(['ANLAGEN-PARAMETER']);
+  rows.push(['Max. Luftdurchfluss (L/min)',s.maxLuft]);rows.push(['Sauerstoff eingespeist',o2?'Ja':'Nein']);
+  rows.push([]);rows.push(['STANDARD-BRENNER']);
+  rows.push(['Brenner Größe (mm)',s.defaultGroesse]);rows.push(['Lochreihen',s.defaultLochreihen]);rows.push(['Abstand (cm)',s.defaultAbstand]);
+  rows.push([]);rows.push(['BRENNER-KONFIGURATION']);
+  rows.push(['Nr.','Größe (mm)','Lochreihen','Abstand (cm)','Position (Fahrtrichtung)','Individuell','Luft/mm (L/min)','Bedarf (L/min)']);
+  let ges=0;
+  (s.brenners||[]).forEach((b,i)=>{
+    const gr=b.custom&&b.groesse!==null?b.groesse:s.defaultGroesse;
+    const lr=b.custom&&b.lochreihen!==null?b.lochreihen:s.defaultLochreihen;
+    const ab=b.custom&&b.abstand!==null?b.abstand:s.defaultAbstand;
+    let l=lr>=10?3:1;if(o2)l*=1.5;const bd=l*gr;ges+=bd;
+    rows.push([i+1,gr,lr,ab,b.side==='links'?'Links':'Rechts',b.custom?'Ja':'Nein',l,bd]);
+  });
+  rows.push([]);rows.push(['ERGEBNIS']);
+  rows.push(['Gesamt-Luftbedarf (L/min)',ges]);
+  const au=s.maxLuft>0?((ges/s.maxLuft)*100):0;
+  rows.push(['Auslastung (%)',Math.round(au*10)/10]);
+  rows.push(['Verbleibende Kapazität (L/min)',s.maxLuft-ges]);
+  rows.push(['Status',au>100?'ÜBERSCHRITTEN':au>80?'HOHE AUSLASTUNG':'OK']);
+
+  const ss=[],ssMap={};
+  function ssI(str){str=String(str);if(ssMap[str]!==undefined)return ssMap[str];const idx=ss.length;ss.push(str);ssMap[str]=idx;return idx;}
+  const boldRows=new Set([0,9,13,18,19,rows.length-5]);
+  let sd='';
+  rows.forEach((r,ri)=>{sd+='<row r="'+(ri+1)+'">';r.forEach((c,ci)=>{
+    const ref=String.fromCharCode(65+ci)+(ri+1),isBold=boldRows.has(ri),st=isBold?' s="1"':'';
+    if(typeof c==='number')sd+=`<c r="${ref}"${st}><v>${c}</v></c>`;
+    else sd+=`<c r="${ref}" t="s"${st}><v>${ssI(c)}</v></c>`;
+  });sd+='</row>';});
+
+  const files={
+    '[Content_Types].xml':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>',
+    '_rels/.rels':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>',
+    'xl/_rels/workbook.xml.rels':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>',
+    'xl/workbook.xml':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Konfiguration" sheetId="1" r:id="rId1"/></sheets></workbook>',
+    'xl/styles.xml':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs></styleSheet>',
+  };
+  files['xl/worksheets/sheet1.xml']='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols><col min="1" max="1" width="35" customWidth="1"/><col min="2" max="8" width="18" customWidth="1"/></cols><sheetData>'+sd+'</sheetData></worksheet>';
+  files['xl/sharedStrings.xml']='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="'+ss.length+'" uniqueCount="'+ss.length+'">'+ss.map(s=>'<si><t>'+esc(s)+'</t></si>').join('')+'</sst>';
+
+  const zip=buildZip(files);
+  const blob=new Blob([zip],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`Brenner_${(s.produktName||'Konfig').replace(/[^a-zA-Z0-9\u00C4\u00D6\u00DC\u00E4\u00F6\u00FC\u00DF\-]/g,'_')}_${s.linieNr||'XX'}.xlsx`;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function buildZip(files){
+  const enc=new TextEncoder();
+  const entries=Object.entries(files).map(([n,c])=>({name:enc.encode(n),data:enc.encode(c)}));
+  let offset=0;const lhs=[],chs=[];
+  entries.forEach(e=>{
+    const lh=new Uint8Array(30+e.name.length+e.data.length);const dv=new DataView(lh.buffer);
+    dv.setUint32(0,0x04034b50,true);dv.setUint16(4,20,true);dv.setUint16(6,0,true);dv.setUint16(8,0,true);
+    dv.setUint16(10,0,true);dv.setUint16(12,0,true);
+    const crc=crc32(e.data);dv.setUint32(14,crc,true);dv.setUint32(18,e.data.length,true);dv.setUint32(22,e.data.length,true);
+    dv.setUint16(26,e.name.length,true);dv.setUint16(28,0,true);
+    lh.set(e.name,30);lh.set(e.data,30+e.name.length);lhs.push(lh);
+    const ch=new Uint8Array(46+e.name.length);const cv=new DataView(ch.buffer);
+    cv.setUint32(0,0x02014b50,true);cv.setUint16(4,20,true);cv.setUint16(6,20,true);
+    cv.setUint16(8,0,true);cv.setUint16(10,0,true);cv.setUint16(12,0,true);cv.setUint16(14,0,true);
+    cv.setUint32(16,crc,true);cv.setUint32(20,e.data.length,true);cv.setUint32(24,e.data.length,true);
+    cv.setUint16(28,e.name.length,true);cv.setUint16(30,0,true);cv.setUint16(32,0,true);
+    cv.setUint16(34,0,true);cv.setUint16(36,0,true);cv.setUint32(38,0,true);cv.setUint32(42,offset,true);
+    ch.set(e.name,46);chs.push(ch);offset+=lh.length;
+  });
+  const cOff=offset;let cSz=0;chs.forEach(c=>cSz+=c.length);
+  const eocd=new Uint8Array(22);const ev=new DataView(eocd.buffer);
+  ev.setUint32(0,0x06054b50,true);ev.setUint16(4,0,true);ev.setUint16(6,0,true);
+  ev.setUint16(8,entries.length,true);ev.setUint16(10,entries.length,true);
+  ev.setUint32(12,cSz,true);ev.setUint32(16,cOff,true);ev.setUint16(20,0,true);
+  const r=new Uint8Array(offset+cSz+22);let p=0;
+  lhs.forEach(l=>{r.set(l,p);p+=l.length;});chs.forEach(c=>{r.set(c,p);p+=c.length;});r.set(eocd,p);
+  return r;
+}
+function crc32(d){let c=0xFFFFFFFF;for(let i=0;i<d.length;i++){c^=d[i];for(let j=0;j<8;j++)c=(c>>>1)^(c&1?0xEDB88320:0);}return(c^0xFFFFFFFF)>>>0;}
+
+// INIT
+renderLineButtons();
+['links','rechts','links','rechts'].forEach(s=>brenners.push(createB(s)));
+renderBrenners();showStep();
+
+// --- PDF EXPORT ---
+function exportPDF(){
+  const s=collect();
+  const o2=s.sauerstoff==='ja';
+  let ges=0;
+  const bData=(s.brenners||[]).map((b,i)=>{
+    const gr=b.custom&&b.groesse!==null?b.groesse:s.defaultGroesse;
+    const lr=b.custom&&b.lochreihen!==null?b.lochreihen:s.defaultLochreihen;
+    const ab=b.custom&&b.abstand!==null?b.abstand:s.defaultAbstand;
+    let l=lr>=10?3:1;if(o2)l*=1.5;const bd=l*gr;ges+=bd;
+    return{nr:i+1,gr,lr,ab,side:b.side==='links'?'Links':'Rechts',custom:b.custom?'Ja':'Nein',l,bd};
+  });
+  const au=s.maxLuft>0?((ges/s.maxLuft)*100):0;
+  const vb=s.maxLuft-ges;
+  const status=au>100?'UEBERSCHRITTEN':au>80?'HOHE AUSLASTUNG':'OK';
+  const datum=new Date().toLocaleString('de-DE');
+  const w=window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Brenner ${s.produktName}</title>
+<style>
+body{font-family:'Segoe UI',sans-serif;padding:30px;color:#2c3e50;max-width:800px;margin:0 auto;}
+h1{color:#1a3a5c;font-size:1.4rem;border-bottom:3px solid #1a3a5c;padding-bottom:8px;}
+h2{color:#1a3a5c;font-size:1.1rem;margin-top:24px;border-bottom:1px solid #dce4ec;padding-bottom:4px;}
+table{width:100%;border-collapse:collapse;margin:10px 0;}
+th,td{padding:8px 12px;border:1px solid #dce4ec;text-align:left;font-size:.85rem;}
+th{background:#1a3a5c;color:#fff;}
+.r{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #eee;}
+.r span:first-child{color:#8495a7;font-size:.85rem;}
+.r strong{font-size:.85rem;}
+.st{padding:10px 16px;border-radius:8px;text-align:center;font-weight:700;font-size:1.1rem;margin:16px 0;}
+.ok{background:#d5f5e3;color:#27ae60;}.warn{background:#fdebd0;color:#e67e22;}.bad{background:#fadbd8;color:#c0392b;}
+.ft{margin-top:30px;padding-top:10px;border-top:1px solid #dce4ec;font-size:.7rem;color:#8495a7;text-align:center;}
+@media print{.np{display:none;}}
+</style></head><body>
+<h1>PSL GmbH - Brenner-Einstellungsrechner</h1>
+<h2>Produktinformation</h2>
+<div class="r"><span>Produkt</span><strong>${s.produktName}</strong></div>
+<div class="r"><span>Linie</span><strong>${s.linieLabel||'-'}</strong></div>
+<div class="r"><span>Linien-Nr.</span><strong>${s.linieNr||'-'}</strong></div>
+<div class="r"><span>Konfiguration</span><strong>${s.anlagenConfig||'-'}</strong></div>
+<div class="r"><span>Bemerkung</span><strong>${s.bemerkung||'-'}</strong></div>
+<div class="r"><span>Datum</span><strong>${datum}</strong></div>
+<h2>Anlagen-Parameter</h2>
+<div class="r"><span>Max. Luftdurchfluss</span><strong>${s.maxLuft.toLocaleString('de-DE')} L/min</strong></div>
+<div class="r"><span>Sauerstoff</span><strong>${o2?'Ja':'Nein'}</strong></div>
+<h2>Brenner-Konfiguration (${bData.length} Brenner)</h2>
+<table>
+<tr><th>Nr.</th><th>mm</th><th>LR</th><th>Abst.</th><th>Pos.</th><th>L/mm</th><th>Bedarf</th></tr>
+${bData.map(d=>`<tr><td>${d.nr}</td><td>${d.gr}</td><td>${d.lr}</td><td>${d.ab}</td><td>${d.side}</td><td>${d.l}</td><td>${d.bd.toLocaleString('de-DE')}</td></tr>`).join('')}
+</table>
+<h2>Ergebnis</h2>
+<div class="r"><span>Gesamt-Luftbedarf</span><strong>${ges.toLocaleString('de-DE')} L/min</strong></div>
+<div class="r"><span>Auslastung</span><strong>${au.toFixed(1)}%</strong></div>
+<div class="r"><span>Verbleibend</span><strong>${vb.toLocaleString('de-DE')} L/min</strong></div>
+<div class="st ${au>100?'bad':au>80?'warn':'ok'}">${status}</div>
+<div class="ft">PSL GmbH | ${datum}</div>
+<div class="np" style="text-align:center;margin-top:20px;">
+<button onclick="window.print()" style="padding:12px 30px;background:#1a3a5c;color:#fff;border:none;border-radius:8px;font-size:1rem;cursor:pointer;">Drucken / Als PDF speichern</button>
+</div></body></html>`);
+  w.document.close();
+}
+
+// --- EMAIL ---
+function sendEmail(){
+  const s=collect();
+  const o2=s.sauerstoff==='ja';
+  let ges=0;
+  (s.brenners||[]).forEach(b=>{
+    const gr=b.custom&&b.groesse!==null?b.groesse:s.defaultGroesse;
+    const lr=b.custom&&b.lochreihen!==null?b.lochreihen:s.defaultLochreihen;
+    let l=lr>=10?3:1;if(o2)l*=1.5;ges+=l*gr;
+  });
+  const au=s.maxLuft>0?((ges/s.maxLuft)*100):0;
+  const status=au>100?'UEBERSCHRITTEN':au>80?'HOHE AUSLASTUNG':'OK';
+  // Download XLSX first
+  exportExcel();
+  // Open mailto after short delay
+  const subj=encodeURIComponent('Brenner-Konfiguration: '+s.produktName+' ('+s.linieLabel+')');
+  const body=encodeURIComponent(
+'Brenner-Einstellungsrechner - Ergebnis\n\n'+
+'Produkt: '+s.produktName+'\n'+
+'Linie: '+s.linieLabel+' ('+s.linieNr+')\n'+
+'Konfiguration: '+s.anlagenConfig+'\n'+
+'Brenner: '+(s.brenners||[]).length+' Stueck\n'+
+'Sauerstoff: '+(o2?'Ja':'Nein')+'\n\n'+
+'ERGEBNIS:\n'+
+'Gesamt-Luftbedarf: '+ges.toLocaleString('de-DE')+' L/min\n'+
+'Max. Kapazitaet: '+s.maxLuft.toLocaleString('de-DE')+' L/min\n'+
+'Auslastung: '+au.toFixed(1)+'%\n'+
+'Status: '+status+'\n\n'+
+'Bemerkung: '+(s.bemerkung||'-')+'\n\n'+
+'Die XLSX-Datei wurde heruntergeladen - bitte als Anhang anfuegen.\n\n'+
+'---\nPSL GmbH - Brenner-Einstellungsrechner'
+  );
+  setTimeout(()=>{window.location.href='mailto:?subject='+subj+'&body='+body;},1000);
+}
+</script>
+</body>
+</html>
