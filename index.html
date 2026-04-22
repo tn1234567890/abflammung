@@ -231,8 +231,8 @@ body{font-family:'Segoe UI',Inter,system-ui,sans-serif;background:var(--bg);colo
       <div class="exa">
         <button class="btn btn-ok" onclick="saveProduct()">Produkt speichern</button>
         <button class="btn btn-pri" onclick="exportExcel()">📊 Excel exportieren</button>
-        <button class="btn btn-pri" style="background:#c0392b;" onclick="exportPDF()">📄 PDF exportieren</button>
-        <button class="btn btn-pri" style="background:#d35400;" onclick="sendEmail()">📧 Per E-Mail senden</button>
+        <!-- <button class="btn btn-pri" style="background:#c0392b;" onclick="exportPDF()">📄 PDF exportieren</button> -->
+        <!-- <button class="btn btn-pri" style="background:#d35400;" onclick="sendEmail()">📧 Per E-Mail senden</button> -->
         <button class="btn btn-ghost" onclick="resetForm()">Neue Konfiguration</button>
       </div>
     </div>
@@ -987,7 +987,7 @@ function sendEmail(){
 'Die XLSX-Datei wurde heruntergeladen - bitte als Anhang anfuegen.\n\n'+
 '---\nPSL GmbH - Brenner-Einstellungsrechner'
   );
-  setTimeout(()=>{window.location.href='mailto:?subject='+subj+'&body='+body;},1000);
+  setTimeout(()=>{window.location.href='mailto:t.neisen@pslgmbh.com?subject='+subj+'&body='+body;},1000);
 }
 </script>
 </body>
