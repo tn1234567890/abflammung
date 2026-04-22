@@ -383,7 +383,8 @@ function calculate(){
   document.getElementById('resultGrid').innerHTML=`
     <div class="rc"><div class="rl">Gesamt-Luftbedarf</div><div class="rv">${ges.toLocaleString('de-DE')} L/min</div></div>
     <div class="rc ${cls}"><div class="rl">Auslastung</div><div class="rv">${au.toFixed(1)}%</div></div>
-    <div class="rc ${cls}"><div class="rl">Verbleibend</div><div class="rv">${vb.toLocaleString('de-DE')} L/min</div></div>
+    <div class=\"rc ${cls}\"><div class=\"rl\">Verbleibend</div><div class=\"rv\">${vb.toLocaleString('de-DE')} L/min</div></div>
+    <div class=\"rc ${au>100?'bad':'ok'}\"><div class=\"rl\">Anlageneinstellung</div><div class=\"rv\">${au>100?(100/au*100).toFixed(1):100.0}%</div></div>
     <div class="rc full ${cls}"><div class="rv">${st}</div></div>`;
 
   document.getElementById('summary').innerHTML=`
