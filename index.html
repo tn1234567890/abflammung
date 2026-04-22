@@ -159,7 +159,17 @@ body{font-family:'Segoe UI',Inter,system-ui,sans-serif;background:var(--bg);colo
     <div class="card">
       <div class="ct">Produkt</div>
       <div class="g1">
-        <div class="fld"><label>Produktname / Artikel-Nr.</label><input type="text" id="produktName" placeholder="z.B. Flasche XY 200ml"></div>
+        <div style="display:flex;gap:10px;align-items:flex-end;">
+          <div class="fld" style="flex-shrink:0;width:auto;">
+            <label>Datum</label>
+            <input type="date" id="erfassungsDatum" disabled>
+          </div>
+          <div class="fld" style="flex:1;min-width:0;">
+            <label>Produktname / Artikel-Nr.</label>
+            <input type="text" id="produktName" placeholder="z.B. Flasche XY 200ml">
+          </div>
+        </div>
+
         <div class="fld"><label>Bemerkung (optional)</label><input type="text" id="bemerkung" placeholder="z.B. Sonderkonfiguration"></div>
       </div>
     </div>
@@ -230,7 +240,7 @@ body{font-family:'Segoe UI',Inter,system-ui,sans-serif;background:var(--bg);colo
       <div class="ct">Speichern und Exportieren</div>
       <div class="exa">
         <button class="btn btn-ok" onclick="saveProduct()">Produkt speichern</button>
-        <button class="btn btn-pri" onclick="exportExcel()">📊 Excel exportieren</button>
+        <!-- <button class="btn btn-pri" onclick="exportExcel()">📊 Excel exportieren</button> -->
         <!-- <button class="btn btn-pri" style="background:#c0392b;" onclick="exportPDF()">📄 PDF exportieren</button> -->
         <!-- <button class="btn btn-pri" style="background:#d35400;" onclick="sendEmail()">📧 Per E-Mail senden</button> -->
         <button class="btn btn-ghost" onclick="resetForm()">Neue Konfiguration</button>
@@ -244,6 +254,8 @@ body{font-family:'Segoe UI',Inter,system-ui,sans-serif;background:var(--bg);colo
   <button class="btn btn-back" id="btnBack" onclick="prevStep()">Zurück</button>
   <button class="btn btn-pri" id="btnNext" onclick="nextStep()">Weiter</button>
 </div>
+
+
 
 <script>
 const LINES={
@@ -435,7 +447,7 @@ function getP(){try{return JSON.parse(localStorage.getItem('brenner_products')||
 function setP(p){localStorage.setItem('brenner_products',JSON.stringify(p));}
 function collect(){
   const L=LINES[selectedLine]||{};
-  return{produktName:document.getElementById('produktName').value.trim(),linie:L.type||'',linieNr:L.nr||'',linieLabel:L.label||'',anlagenConfig:L.desc||'',maxLuft:L.luft||0,bemerkung:document.getElementById('bemerkung').value.trim(),sauerstoff:document.getElementById('sauerstoff').value,defaultGroesse:gV('defaultGroesse'),defaultLochreihen:gV('defaultLochreihen'),defaultAbstand:gV('defaultAbstand'),brenners:brenners.map(b=>({...b})),savedAt:new Date().toISOString(),selectedLine};
+  return{datum:document.getElementById('erfassungsDatum').value,produktName:document.getElementById('produktName').value.trim(),linie:L.type||'',linieNr:L.nr||'',linieLabel:L.label||'',anlagenConfig:L.desc||'',maxLuft:L.luft||0,bemerkung:document.getElementById('bemerkung').value.trim(),sauerstoff:document.getElementById('sauerstoff').value,defaultGroesse:gV('defaultGroesse'),defaultLochreihen:gV('defaultLochreihen'),defaultAbstand:gV('defaultAbstand'),brenners:brenners.map(b=>({...b})),savedAt:new Date().toISOString(),selectedLine};
 }
 function loadState(s){
   if(s.selectedLine&&LINES[s.selectedLine])selectLine(s.selectedLine);
@@ -567,330 +579,8 @@ function crc32(d){let c=0xFFFFFFFF;for(let i=0;i<d.length;i++){c^=d[i];for(let j
 
 // INIT
 renderLineButtons();
-['links','rechts','links','rechts'].forEach(s=>brenners.push(createB(s)));
-renderBrenners();showStep();
-</script>
-<script>
-const LINES={
-  NL1:{label:'Nasslack 1',type:'Nasslack',nr:'NL1',anlagen:[3000,3000,1500],luft:7500,desc:'2\u00D73.000 + 1\u00D71.500 L'},
-  NL2:{label:'Nasslack 2',type:'Nasslack',nr:'NL2',anlagen:[3000,3000,1500],luft:7500,desc:'2\u00D73.000 + 1\u00D71.500 L'},
-  NL3:{label:'Nasslack 3',type:'Nasslack',nr:'NL3',anlagen:[3000,3000,1500],luft:7500,desc:'2×3.000 + 1×1.500 L'},
-  'K15-1H':{label:'K15-1H',type:'Siebdruck',nr:'K15-1H',anlagen:[3000],luft:3000,desc:'1\u00D73.000 L'},
-  'K15-2H':{label:'K15-2H',type:'Siebdruck',nr:'K15-2H',anlagen:[3000],luft:3000,desc:'1\u00D73.000 L'},
-  'K15-3H':{label:'K15-3H',type:'Siebdruck',nr:'K15-3H',anlagen:[3000],luft:3000,desc:'1\u00D73.000 L'},
-  'K15-4H':{label:'K15-4H',type:'Siebdruck',nr:'K15-4H',anlagen:[3000],luft:3000,desc:'1\u00D73.000 L'},
-};
-let selectedLine=null;
+document.getElementById('erfassungsDatum').value=new Date().toISOString().slice(0,10);
 
-function renderLineButtons(){
-  const nG=document.getElementById('nlGrid'),sG=document.getElementById('sdGrid');
-  nG.innerHTML='';sG.innerHTML='';
-  Object.entries(LINES).forEach(([k,v])=>{
-    const d=document.createElement('div');
-    d.className='line-btn'+(selectedLine===k?' selected':'');
-    d.innerHTML=`<div class="ln">${v.label}</div><div class="ld">${v.desc}</div>`;
-    d.onclick=()=>selectLine(k);
-    if(v.type==='Nasslack')nG.appendChild(d);else sG.appendChild(d);
-  });
-  const info=document.getElementById('lineInfo');
-  if(selectedLine&&LINES[selectedLine]){
-    const L=LINES[selectedLine];
-    info.innerHTML=`<strong>${L.label}</strong> \u2014 ${L.desc} \u2014 Max. ${L.luft.toLocaleString('de-DE')} L/min`;
-    info.classList.add('show');
-  } else { info.classList.remove('show'); }
-}
-
-function selectLine(k){ selectedLine=k; renderLineButtons(); }
-
-const STEPS=[
-  {id:'step1',label:'Linie & Produkt'},
-  {id:'step2',label:'Brenner'},
-  {id:'step3',label:'Ansicht'},
-  {id:'step4',label:'Ergebnis'},
-];
-let cStep=0;
-
-function renderProgress(){
-  const bar=document.getElementById('pbar'),labels=document.getElementById('slabels');
-  let bH='',lH='';
-  STEPS.forEach((s,i)=>{
-    const cls=i<cStep?'done':i===cStep?'active':'';
-    bH+=`<div class="sdot ${cls}" onclick="goTo(${i})">${i<cStep?'\u2713':i+1}</div>`;
-    if(i<STEPS.length-1)bH+=`<div class="sline ${i<cStep?'done':''}"></div>`;
-    lH+=`<div class="slbl ${cls}">${s.label}</div>`;
-  });
-  bar.innerHTML=bH;labels.innerHTML=lH;
-  document.getElementById('ppct').textContent=Math.round((cStep/(STEPS.length-1))*100)+'% abgeschlossen';
-}
-
-function showStep(){
-  STEPS.forEach((s,i)=>document.getElementById(s.id).classList.toggle('active',i===cStep));
-  document.getElementById('btnBack').style.display=cStep===0?'none':'';
-  const bn=document.getElementById('btnNext');
-  bn.style.display=cStep===STEPS.length-1?'none':'';
-  bn.textContent='Weiter';
-  renderProgress();
-  if(cStep>=2)calculate();
-  if(cStep===0)renderSaved();
-  window.scrollTo({top:0,behavior:'smooth'});
-}
-
-function nextStep(){
-  if(cStep===0){
-    if(!selectedLine){alert('Bitte eine Linie auswählen.');return;}
-    const n=document.getElementById('produktName').value.trim();
-    if(!n){document.getElementById('produktName').focus();document.getElementById('produktName').style.borderColor='var(--bad)';setTimeout(()=>document.getElementById('produktName').style.borderColor='',1500);return;}
-  }
-  if(cStep<STEPS.length-1){cStep++;showStep();}
-}
-function prevStep(){if(cStep>0){cStep--;showStep();}}
-function goTo(i){if(i<=cStep+1){cStep=i;showStep();}}
-
-let brenners=[],nxId=1,editKey=null;
-function createB(side='links'){return{id:nxId++,custom:false,side,groesse:null,lochreihen:null,abstand:null};}
-function gV(id){return parseFloat(document.getElementById(id)?.value)||0;}
-function bG(b){return b.custom&&b.groesse!==null?b.groesse:gV('defaultGroesse');}
-function bL(b){return b.custom&&b.lochreihen!==null?b.lochreihen:gV('defaultLochreihen');}
-function bA(b){return b.custom&&b.abstand!==null?b.abstand:gV('defaultAbstand');}
-function luftMm(lr,o2){let v=lr>=10?3:1;return o2?v*1.5:v;}
-
-function addBrenner(){
-  const last=brenners.length>0?brenners[brenners.length-1].side:'rechts';
-  brenners.push(createB(last==='links'?'rechts':'links'));renderBrenners();
-}
-function removeBrenner(id){if(brenners.length<=1)return;brenners=brenners.filter(b=>b.id!==id);renderBrenners();}
-function toggleCustom(id){
-  const b=brenners.find(x=>x.id===id);b.custom=!b.custom;
-  if(b.custom){b.groesse=gV('defaultGroesse');b.lochreihen=gV('defaultLochreihen');b.abstand=gV('defaultAbstand');}
-  renderBrenners();
-}
-function setSide(id,s){brenners.find(x=>x.id===id).side=s;renderBrenners();}
-function uBF(id,f,v){brenners.find(x=>x.id===id)[f]=parseFloat(v)||0;}
-
-function renderBrenners(){
-  document.getElementById('brennerCount').textContent=brenners.length;
-  document.getElementById('brennerList').innerHTML=brenners.map((b,i)=>{
-    const c=b.custom,gr=bG(b),lr=bL(b),ab=bA(b);
-    return `<div class="bi ${c?'custom':''}">
-      <div class="bh"><span class="tt">Brenner ${i+1}</span>
-        <div class="ba">
-          <button class="lnk" onclick="toggleCustom(${b.id})">${c?'Standard':'Individuell'}</button>
-          ${brenners.length>1?`<button class="btn btn-bad btn-sm" onclick="removeBrenner(${b.id})" style="width:auto;padding:6px 10px;">\u2715</button>`:''}
-        </div>
-      </div>
-      <div class="bf">
-        <div class="fld"><label>Größe (mm)</label><input type="number" value="${gr}" ${c?'':'disabled'} oninput="uBF(${b.id},'groesse',this.value)"></div>
-        <div class="fld"><label>Lochreihen</label><input type="number" value="${lr}" ${c?'':'disabled'} oninput="uBF(${b.id},'lochreihen',this.value)"></div>
-        <div class="fld"><label>Abstand (cm)</label><input type="number" value="${ab}" step="0.5" ${c?'':'disabled'} oninput="uBF(${b.id},'abstand',this.value)"></div>
-        <div class="fld"><label>Position (Fahrtrichtung)</label>
-          <div class="stog">
-            <div class="sbtn ${b.side==='links'?'active':''}" onclick="setSide(${b.id},'links')">Links</div>
-            <div class="sbtn ${b.side==='rechts'?'active':''}" onclick="setSide(${b.id},'rechts')">Rechts</div>
-          </div>
-        </div>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-function calculate(){
-  const L=LINES[selectedLine]||{};
-  const mx=L.luft||0,o2=document.getElementById('sauerstoff').value==='ja';
-  let ges=0;const ds=[];
-  brenners.forEach((b,i)=>{
-    const gr=bG(b),lr=bL(b),l=luftMm(lr,o2),bd=l*gr;ges+=bd;
-    ds.push({i,gr,lr,l,bd,ab:bA(b),side:b.side});
-  });
-  const au=mx>0?(ges/mx)*100:0,vb=mx-ges;
-  const cls=au>100?'bad':au>80?'warn':'ok';
-  const st=au>100?'\u26D4 ÜBERSCHRITTEN':au>80?'\u26A0 HOHE AUSLASTUNG':'\u2705 IM GRÜNEN BEREICH';
-
-  document.getElementById('resultGrid').innerHTML=`
-    <div class="rc"><div class="rl">Gesamt-Luftbedarf</div><div class="rv">${ges.toLocaleString('de-DE')} L/min</div></div>
-    <div class="rc ${cls}"><div class="rl">Auslastung</div><div class="rv">${au.toFixed(1)}%</div></div>
-    <div class="rc ${cls}"><div class="rl">Verbleibend</div><div class="rv">${vb.toLocaleString('de-DE')} L/min</div></div>
-    <div class="rc full ${cls}"><div class="rv">${st}</div></div>`;
-
-  document.getElementById('summary').innerHTML=`
-    <div class="dr"><span>Produkt</span><strong>${document.getElementById('produktName').value.trim()}</strong></div>
-    <div class="dr"><span>Linie</span><strong>${L.label||'-'}</strong></div>
-    <div class="dr"><span>Anlagenkonfiguration</span><strong>${L.desc||'-'}</strong></div>
-    <div class="dr"><span>Max. Luftdurchfluss</span><strong>${mx.toLocaleString('de-DE')} L/min</strong></div>
-    <div class="dr"><span>Sauerstoff</span><strong>${o2?'Ja':'Nein'}</strong></div>
-    <div class="dr"><span>Anzahl Brenner</span><strong>${brenners.length}</strong></div>
-    <div class="dr"><span>Gesamt-Bedarf</span><strong>${ges.toLocaleString('de-DE')} L/min</strong></div>
-    <div class="dr"><span>Auslastung</span><strong>${au.toFixed(1)}%</strong></div>`;
-
-  document.getElementById('einzelAuswertung').innerHTML=ds.map(d=>{
-    const p=mx>0?((d.bd/mx)*100).toFixed(1):'0';
-    return `<div class="dr"><span>Brenner ${d.i+1} \u2014 ${d.gr}mm, ${d.lr} LR, ${d.side==='links'?'Links':'Rechts'}</span><strong>${d.bd.toLocaleString('de-DE')} L/min (${p}%)</strong></div>`;
-  }).join('');
-  renderBelt(ds,mx);
-}
-
-function renderBelt(ds,mx){
-  const inn=document.getElementById('beltInner');
-  inn.querySelectorAll('.bv,.bot,.bdl,.fahrt-label').forEach(e=>e.remove());
-  if(!ds.length)return;
-  const cW=inn.offsetWidth||500,sX=50,eX=cW-50,sp=(eX-sX)/(ds.length+1);
-  const ta=mx>0?(ds.reduce((s,d)=>s+d.bd,0)/mx)*100:0;
-  const cc=ta>100?'c-bad':ta>80?'c-warn':'c-ok';
-  const flL=document.createElement('div');flL.className='fahrt-label';flL.style.cssText='top:2px;left:50%;transform:translateX(-50%);';flL.textContent='\u2191 In Fahrtrichtung links';inn.appendChild(flL);
-  const flR=document.createElement('div');flR.className='fahrt-label';flR.style.cssText='bottom:2px;left:50%;transform:translateX(-50%);';flR.textContent='\u2193 In Fahrtrichtung rechts';inn.appendChild(flR);
-  ds.forEach((d,i)=>{
-    const x=sX+sp*(i+1),isL=d.side==='links';
-    const fl='\u{1F525}'.repeat(Math.min(Math.ceil(d.lr/3),4));
-    const el=document.createElement('div');
-    el.className=`bv ${isL?'top':'bottom'}`;
-    el.style.left=x+'px';el.style.transform='translateX(-50%)';
-    el.innerHTML=isL
-      ?`<div class="bl">B${i+1}: ${d.gr}mm</div><div class="bs top ${cc}"></div><div class="bfl">${fl}</div>`
-      :`<div class="bfl">${fl}</div><div class="bs bottom ${cc}"></div><div class="bl">B${i+1}: ${d.gr}mm</div>`;
-    el.onclick=()=>{cStep=1;showStep();setTimeout(()=>document.querySelectorAll('.bi')[i]?.scrollIntoView({behavior:'smooth',block:'center'}),300);};
-    inn.appendChild(el);
-    const bot=document.createElement('div');bot.className='bot';bot.style.left=x+'px';inn.appendChild(bot);
-    const dl=document.createElement('div');dl.className='bdl';dl.textContent=d.ab+'cm';
-    dl.style.left=(x-6)+'px';dl.style.top=isL?'54%':'38%';inn.appendChild(dl);
-  });
-}
-
-// Storage
-function getP(){try{return JSON.parse(localStorage.getItem('brenner_products')||'{}')}catch{return {};}}
-function setP(p){localStorage.setItem('brenner_products',JSON.stringify(p));}
-function collect(){
-  const L=LINES[selectedLine]||{};
-  return{produktName:document.getElementById('produktName').value.trim(),linie:L.type||'',linieNr:L.nr||'',linieLabel:L.label||'',anlagenConfig:L.desc||'',maxLuft:L.luft||0,bemerkung:document.getElementById('bemerkung').value.trim(),sauerstoff:document.getElementById('sauerstoff').value,defaultGroesse:gV('defaultGroesse'),defaultLochreihen:gV('defaultLochreihen'),defaultAbstand:gV('defaultAbstand'),brenners:brenners.map(b=>({...b})),savedAt:new Date().toISOString(),selectedLine};
-}
-function loadState(s){
-  if(s.selectedLine&&LINES[s.selectedLine])selectLine(s.selectedLine);
-  document.getElementById('produktName').value=s.produktName||'';
-  document.getElementById('bemerkung').value=s.bemerkung||'';
-  document.getElementById('sauerstoff').value=s.sauerstoff||'nein';
-  document.getElementById('defaultGroesse').value=s.defaultGroesse||270;
-  document.getElementById('defaultLochreihen').value=s.defaultLochreihen||10;
-  document.getElementById('defaultAbstand').value=s.defaultAbstand||3;
-  brenners=(s.brenners||[]).map(b=>({...b}));nxId=Math.max(...brenners.map(b=>b.id),0)+1;
-  renderBrenners();
-}
-function saveProduct(){
-  const n=document.getElementById('produktName').value.trim();
-  if(!n){alert('Bitte Produktname eingeben.');return;}
-  const L=LINES[selectedLine]||{};
-  const key=editKey||(n+'_'+(L.nr||'')+'_'+Date.now());
-  const ps=getP();ps[key]=collect();setP(ps);editKey=key;
-  alert('Gespeichert: '+n);
-}
-function renderSaved(){
-  const ps=getP(),q=(document.getElementById('searchInput')?.value||'').toLowerCase();
-  const ks=Object.keys(ps).filter(k=>{const p=ps[k];return!q||(p.produktName||'').toLowerCase().includes(q)||(p.linieNr||'').toLowerCase().includes(q)||(p.linieLabel||'').toLowerCase().includes(q);}).sort((a,b)=>(ps[b].savedAt||'').localeCompare(ps[a].savedAt||''));
-  const el=document.getElementById('savedList');
-  if(!ks.length){el.innerHTML=`<div class="empty">${q?'Keine Treffer.':'Noch keine gespeicherten Konfigurationen.'}</div>`;return;}
-  el.innerHTML=ks.map(k=>{const p=ps[k],d=p.savedAt?new Date(p.savedAt).toLocaleDateString('de-DE'):'';
-    return`<div class="srow" onclick="loadAndGo('${k}')"><div><div class="sn">${p.produktName||'-'}</div><div class="sm"><span class="tag ${p.linie==='Nasslack'?'tag-nl':'tag-sd'}">${p.linieLabel||p.linie||'-'}</span> \u00B7 ${(p.brenners||[]).length} Brenner \u00B7 ${d}</div></div><button class="btn btn-bad btn-sm" onclick="event.stopPropagation();delP('${k}')" style="width:auto;padding:6px 10px;">\u2715</button></div>`;
-  }).join('');
-}
-function loadAndGo(k){const p=getP()[k];if(!p)return;editKey=k;loadState(p);cStep=1;showStep();}
-function delP(k){if(!confirm('Konfiguration löschen?'))return;const p=getP();delete p[k];setP(p);renderSaved();}
-function resetForm(){
-  editKey=null;selectedLine=null;
-  document.getElementById('produktName').value='';document.getElementById('bemerkung').value='';
-  document.getElementById('sauerstoff').value='nein';
-  document.getElementById('defaultGroesse').value=270;document.getElementById('defaultLochreihen').value=10;document.getElementById('defaultAbstand').value=3;
-  brenners=[];nxId=1;
-  ['links','rechts','links','rechts'].forEach(s=>brenners.push(createB(s)));
-  renderBrenners();renderLineButtons();cStep=0;showStep();
-}
-
-// XLSX
-function exportExcel(){generateXLSX(collect());}
-function generateXLSX(s){
-  const o2=s.sauerstoff==='ja',rows=[];
-  rows.push(['Brenner-Einstellungsrechner \u2013 Produktkonfiguration']);
-  rows.push([]);
-  rows.push(['Produkt',s.produktName]);rows.push(['Linie',s.linieLabel||'']);rows.push(['Linien-Nr.',s.linieNr||'']);
-  rows.push(['Anlagenkonfiguration',s.anlagenConfig||'']);rows.push(['Bemerkung',s.bemerkung||'']);
-  rows.push(['Datum',s.savedAt?new Date(s.savedAt).toLocaleString('de-DE'):new Date().toLocaleString('de-DE')]);
-  rows.push([]);rows.push(['ANLAGEN-PARAMETER']);
-  rows.push(['Max. Luftdurchfluss (L/min)',s.maxLuft]);rows.push(['Sauerstoff eingespeist',o2?'Ja':'Nein']);
-  rows.push([]);rows.push(['STANDARD-BRENNER']);
-  rows.push(['Brenner Größe (mm)',s.defaultGroesse]);rows.push(['Lochreihen',s.defaultLochreihen]);rows.push(['Abstand (cm)',s.defaultAbstand]);
-  rows.push([]);rows.push(['BRENNER-KONFIGURATION']);
-  rows.push(['Nr.','Größe (mm)','Lochreihen','Abstand (cm)','Position (Fahrtrichtung)','Individuell','Luft/mm (L/min)','Bedarf (L/min)']);
-  let ges=0;
-  (s.brenners||[]).forEach((b,i)=>{
-    const gr=b.custom&&b.groesse!==null?b.groesse:s.defaultGroesse;
-    const lr=b.custom&&b.lochreihen!==null?b.lochreihen:s.defaultLochreihen;
-    const ab=b.custom&&b.abstand!==null?b.abstand:s.defaultAbstand;
-    let l=lr>=10?3:1;if(o2)l*=1.5;const bd=l*gr;ges+=bd;
-    rows.push([i+1,gr,lr,ab,b.side==='links'?'Links':'Rechts',b.custom?'Ja':'Nein',l,bd]);
-  });
-  rows.push([]);rows.push(['ERGEBNIS']);
-  rows.push(['Gesamt-Luftbedarf (L/min)',ges]);
-  const au=s.maxLuft>0?((ges/s.maxLuft)*100):0;
-  rows.push(['Auslastung (%)',Math.round(au*10)/10]);
-  rows.push(['Verbleibende Kapazität (L/min)',s.maxLuft-ges]);
-  rows.push(['Status',au>100?'ÜBERSCHRITTEN':au>80?'HOHE AUSLASTUNG':'OK']);
-
-  const ss=[],ssMap={};
-  function ssI(str){str=String(str);if(ssMap[str]!==undefined)return ssMap[str];const idx=ss.length;ss.push(str);ssMap[str]=idx;return idx;}
-  const boldRows=new Set([0,9,13,18,19,rows.length-5]);
-  let sd='';
-  rows.forEach((r,ri)=>{sd+='<row r="'+(ri+1)+'">';r.forEach((c,ci)=>{
-    const ref=String.fromCharCode(65+ci)+(ri+1),isBold=boldRows.has(ri),st=isBold?' s="1"':'';
-    if(typeof c==='number')sd+=`<c r="${ref}"${st}><v>${c}</v></c>`;
-    else sd+=`<c r="${ref}" t="s"${st}><v>${ssI(c)}</v></c>`;
-  });sd+='</row>';});
-
-  const files={
-    '[Content_Types].xml':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>',
-    '_rels/.rels':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>',
-    'xl/_rels/workbook.xml.rels':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>',
-    'xl/workbook.xml':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Konfiguration" sheetId="1" r:id="rId1"/></sheets></workbook>',
-    'xl/styles.xml':'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><fonts count="2"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="2"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/></cellXfs></styleSheet>',
-  };
-  files['xl/worksheets/sheet1.xml']='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><cols><col min="1" max="1" width="35" customWidth="1"/><col min="2" max="8" width="18" customWidth="1"/></cols><sheetData>'+sd+'</sheetData></worksheet>';
-  files['xl/sharedStrings.xml']='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="'+ss.length+'" uniqueCount="'+ss.length+'">'+ss.map(s=>'<si><t>'+esc(s)+'</t></si>').join('')+'</sst>';
-
-  const zip=buildZip(files);
-  const blob=new Blob([zip],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download=`Brenner_${(s.produktName||'Konfig').replace(/[^a-zA-Z0-9\u00C4\u00D6\u00DC\u00E4\u00F6\u00FC\u00DF\-]/g,'_')}_${s.linieNr||'XX'}.xlsx`;
-  document.body.appendChild(a);a.click();document.body.removeChild(a);
-}
-function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-
-function buildZip(files){
-  const enc=new TextEncoder();
-  const entries=Object.entries(files).map(([n,c])=>({name:enc.encode(n),data:enc.encode(c)}));
-  let offset=0;const lhs=[],chs=[];
-  entries.forEach(e=>{
-    const lh=new Uint8Array(30+e.name.length+e.data.length);const dv=new DataView(lh.buffer);
-    dv.setUint32(0,0x04034b50,true);dv.setUint16(4,20,true);dv.setUint16(6,0,true);dv.setUint16(8,0,true);
-    dv.setUint16(10,0,true);dv.setUint16(12,0,true);
-    const crc=crc32(e.data);dv.setUint32(14,crc,true);dv.setUint32(18,e.data.length,true);dv.setUint32(22,e.data.length,true);
-    dv.setUint16(26,e.name.length,true);dv.setUint16(28,0,true);
-    lh.set(e.name,30);lh.set(e.data,30+e.name.length);lhs.push(lh);
-    const ch=new Uint8Array(46+e.name.length);const cv=new DataView(ch.buffer);
-    cv.setUint32(0,0x02014b50,true);cv.setUint16(4,20,true);cv.setUint16(6,20,true);
-    cv.setUint16(8,0,true);cv.setUint16(10,0,true);cv.setUint16(12,0,true);cv.setUint16(14,0,true);
-    cv.setUint32(16,crc,true);cv.setUint32(20,e.data.length,true);cv.setUint32(24,e.data.length,true);
-    cv.setUint16(28,e.name.length,true);cv.setUint16(30,0,true);cv.setUint16(32,0,true);
-    cv.setUint16(34,0,true);cv.setUint16(36,0,true);cv.setUint32(38,0,true);cv.setUint32(42,offset,true);
-    ch.set(e.name,46);chs.push(ch);offset+=lh.length;
-  });
-  const cOff=offset;let cSz=0;chs.forEach(c=>cSz+=c.length);
-  const eocd=new Uint8Array(22);const ev=new DataView(eocd.buffer);
-  ev.setUint32(0,0x06054b50,true);ev.setUint16(4,0,true);ev.setUint16(6,0,true);
-  ev.setUint16(8,entries.length,true);ev.setUint16(10,entries.length,true);
-  ev.setUint32(12,cSz,true);ev.setUint32(16,cOff,true);ev.setUint16(20,0,true);
-  const r=new Uint8Array(offset+cSz+22);let p=0;
-  lhs.forEach(l=>{r.set(l,p);p+=l.length;});chs.forEach(c=>{r.set(c,p);p+=c.length;});r.set(eocd,p);
-  return r;
-}
-function crc32(d){let c=0xFFFFFFFF;for(let i=0;i<d.length;i++){c^=d[i];for(let j=0;j<8;j++)c=(c>>>1)^(c&1?0xEDB88320:0);}return(c^0xFFFFFFFF)>>>0;}
-
-// INIT
-renderLineButtons();
 ['links','rechts','links','rechts'].forEach(s=>brenners.push(createB(s)));
 renderBrenners();showStep();
 
